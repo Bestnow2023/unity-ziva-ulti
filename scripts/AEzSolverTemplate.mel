@@ -1,0 +1,72 @@
+global proc AEzSolverTemplate( string $nodeName )
+{
+  editorTemplate -beginScrollLayout;
+
+    // runup weight controls
+    editorTemplate -beginLayout "Runup Settings" -collapse false;
+      editorTemplate -addControl "runupWeight";
+      editorTemplate -addControl "affectSolverGravity";
+      editorTemplate -addControl "affectInertialDamping";
+      editorTemplate -addControl "affectPressureEnvelope";
+      editorTemplate -addControl "affectSurfaceTensionEnvelope";
+      editorTemplate -addControl "affectRestScaleEnvelope";
+      editorTemplate -addControl "affectFiberExcitation";
+      editorTemplate -addControl "affectRestShapeEnvelope";
+    editorTemplate -endLayout;
+  
+    editorTemplate -addSeparator;
+
+    // other controls
+    editorTemplate -addControl "solver";
+    editorTemplate -addControl "integrator";
+    editorTemplate -addControl "collisionDetection";
+    editorTemplate -addControl "collisionPointSpacing";
+    editorTemplate -addControl "maxNewtonIterations";
+    editorTemplate -addControl "solverToleranceFactor";
+    editorTemplate -addControl "substeps";
+    editorTemplate -addControl "framesPerSecond";
+    editorTemplate -addControl "contactDamping";
+    editorTemplate -addControl "stiffnessDamping";
+    editorTemplate -addControl "massDamping";
+    editorTemplate -addControl "gravity";
+
+    editorTemplate -addSeparator;
+
+    editorTemplate -addControl "showBones";
+    editorTemplate -addControl "showTetMeshes";
+    editorTemplate -addControl "showMuscleFibers";
+    editorTemplate -addControl "showAxes";
+    editorTemplate -addControl "showAttachments";
+    editorTemplate -addControl "showMaterials";
+
+    editorTemplate -addSeparator;
+
+    editorTemplate -addControl "maxVisualStretch";
+
+    AEaddRampControl( $nodeName + ".attachmentColorRamp" );
+    AEaddRampControl( $nodeName + ".materialColorRamp" );
+    AEaddRampControl( $nodeName + ".muscleFiberColorRamp" );
+
+    editorTemplate -addSeparator;
+
+    editorTemplate -beginLayout "Collision Visualization Settings" -collapse false;
+    editorTemplate -addControl "showCollisions";
+    AEaddRampControl( $nodeName + ".collisionColorRamp" );
+    editorTemplate -addControl "contactLineWidth";
+    editorTemplate -endLayout;
+
+    // suppressed attributes
+    editorTemplate -suppress "localPosition";
+    editorTemplate -suppress "localScale";
+    editorTemplate -suppress "iGeo";
+    editorTemplate -suppress "iAttachment";
+    editorTemplate -suppress "iMuscle";
+    editorTemplate -suppress "iSolverParams";
+    editorTemplate -suppress "iCacheParams";
+    editorTemplate -suppress "oSolved";
+    editorTemplate -suppress "oCache";
+
+    editorTemplate -addExtraControls;
+
+  editorTemplate -endScrollLayout;
+}

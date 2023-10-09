@@ -1,0 +1,30 @@
+global proc AEzFiberTemplate( string $nodeName )
+{
+  editorTemplate -beginScrollLayout;
+
+  // Add our controls
+  editorTemplate -addControl "envelope";
+  editorTemplate -addControl "strength";
+  editorTemplate -addControl "strengthExp";
+  editorTemplate -addControl "contractionLimit";
+  editorTemplate -addControl "excitation";
+  editorTemplate -addControl "enableMuscleGrowth";
+  editorTemplate -addControl "muscleGrowthScale";
+  editorTemplate -addControl "useLoaForMuscleGrowth";
+
+  // suppress attributes attribute
+  editorTemplate -suppress "iGeo";
+  editorTemplate -suppress "oMuscle";
+  editorTemplate -suppress "oGeo";
+  editorTemplate -suppress "caching";
+  editorTemplate -suppress "nodeState";
+  editorTemplate -suppress "frozen";
+  editorTemplate -suppress "input";
+  editorTemplate -suppress "weightList";
+  editorTemplate -suppress "endPoints";
+  editorTemplate -suppress "map64BitIndices";
+  editorTemplate -suppress "iLineOfActionData";
+
+  editorTemplate -addExtraControls;
+  editorTemplate -endScrollLayout;
+}

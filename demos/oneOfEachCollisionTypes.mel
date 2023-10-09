@@ -1,0 +1,268 @@
+// =========================================================
+
+/*
+One of each collision types
+===========================
+
+Makes a 2 x 5 array of collision tests.
+
+The first dimension corresponds to the different contact types:
+1. fixed contact
+2. sliding contact
+
+The second dimension corresponds to:
+1. tissue colliding with a bone; enable tissue collision volume only
+2. tissue colliding with a bone; enable bone collision volume only
+3. tissue colliding with a bone; enable tissue and bone collision volume
+4. tissue colliding with a tissue; enable collision volume, disable self-collisions
+5. tissue self-colliding with itself
+
+Copyright (C) Ziva Dynamics 2017
+Permission is hereby granted for anybody with a valid Ziva
+license to use this script for any purpose.
+*/
+
+proc ziva_makeGeometry_oneOfEachCollisionTypes(string $meshes[], float $dx, float $dz)
+{
+  // make two boxes; position the second one on top of the first one
+  string $base[] = `polyCube -w 5 -h 2 -d 5 -sw 10 -sh 1 -sz 10`;
+  string $top[] = `polyCube -w 4 -h 1 -d 4 -sw 10 -sh 3 -sz 10`;
+  $meshes[0] = $base[0];
+  $meshes[1] = $top[0];
+  xform -a -ws -t $dx 0.0 $dz $meshes[0];
+  xform -a -ws -t $dx 5.0 $dz $meshes[1];
+}
+
+proc ziva_setBoneCollisionAttrs_oneOfEachCollisionTypes(string $boneNode, int $enableVolume, int $isSliding, int $contactStiffnessExp)
+{
+  setAttr($boneNode + ".collisionVolume") $enableVolume; // whether this object is volumetric and should thus be collided against
+  setAttr($boneNode + ".contactSliding") $isSliding; // whether the contacts slide or are fixed
+  setAttr($boneNode + ".contactStiffnessExp") $contactStiffnessExp; // set the stiffness of contact
+}
+
+proc ziva_setTissueCollisionAttrs_oneOfEachCollisionTypes(string $tissueNode, int $enableVolume, int $enableSelfCollisions, int $isSliding, int $contactStiffnessExp)
+{
+  ziva_setBoneCollisionAttrs_oneOfEachCollisionTypes($tissueNode, $enableVolume, $isSliding, $contactStiffnessExp);
+  setAttr($tissueNode + ".selfCollisions") $enableSelfCollisions; // whether to enable self-collisions for this tissue
+  setAttr($tissueNode + ".contactStiffnessExp") $contactStiffnessExp; // set the stiffness of contact
+}
+
+proc ziva_makeTissueBone_oneOfEachCollisionTypes(string $tissueMesh, string $boneMesh, float $tissueYoungsModulus, int $tissueYoungsModulusExp,
+                                                 int $enableTissueCollisions, int $enableBoneCollisions, int $isSliding, int $contactStiffnessExp)
+{
+  // make a tissue and a bone
+
+  select -r $tissueMesh;
+  string $tissueNodes[] = `ziva -t`; // make the tissue
+  setAttr ($tissueNodes[3] + ".youngsModulus") $tissueYoungsModulus; // set the Young's modulus stiffness to the zMaterial node
+  setAttr ($tissueNodes[3] + ".youngsModulusExp") $tissueYoungsModulusExp; // set the Young's modulus stiffness exponent to the zMaterial node
+
+  int $enableSelfCollisions = 0; // disable self-collisions
+  ziva_setTissueCollisionAttrs_oneOfEachCollisionTypes($tissueNodes[1], $enableTissueCollisions, $enableSelfCollisions, $isSliding, $contactStiffnessExp);
+
+  select -r $boneMesh;
+  string $boneNodes[] = `ziva -b`; // make the bone
+
+  ziva_setBoneCollisionAttrs_oneOfEachCollisionTypes($boneNodes[1], $enableBoneCollisions, $isSliding, $contactStiffnessExp);
+}
+
+proc ziva_makeTissueTissue_oneOfEachCollisionTypes(string $topTissue, string $bottomTissue, string $boneMesh,
+                                                   float $tissueYoungsModulus, int $tissueYoungsModulusExp,
+                                                   int $isSliding, int $contactStiffnessExp)
+{
+  // make two tissues, enable collision volume, disable self-collisions, and attach the bottom tissue to the bone
+
+  select -r $topTissue;
+  string $tissueNodes1[] = `ziva -t`; // make the top tissue
+  setAttr ($tissueNodes1[3] + ".youngsModulus") $tissueYoungsModulus; // set the Young's modulus stiffness to the zMaterial node
+  setAttr ($tissueNodes1[3] + ".youngsModulusExp") $tissueYoungsModulusExp; // set the Young's modulus stiffness exponent to the zMaterial node
+
+  select -r $bottomTissue;
+  string $tissueNodes2[] = `ziva -t`; // make the bottom tissue
+  setAttr ($tissueNodes2[3] + ".youngsModulus") $tissueYoungsModulus; // set the Young's modulus stiffness to the zMaterial node
+  setAttr ($tissueNodes2[3] + ".youngsModulusExp") $tissueYoungsModulusExp; // set the Young's modulus stiffness exponent to the zMaterial node
+
+  int $enableVolume = 1; // enable collision volume
+  int $enableSelfCollisions = 0; // disable self-collisions
+  ziva_setTissueCollisionAttrs_oneOfEachCollisionTypes($tissueNodes1[1], $enableVolume, $enableSelfCollisions, $isSliding, $contactStiffnessExp);
+  ziva_setTissueCollisionAttrs_oneOfEachCollisionTypes($tissueNodes2[1], $enableVolume, $enableSelfCollisions, $isSliding, $contactStiffnessExp);
+
+  select -r $bottomTissue $boneMesh;
+  string $attachment[] = `ziva -a`; // attach the bottom tissue to the bone
+  setAttr ($attachment[0] + ".damping") 0.1;
+}
+
+proc ziva_makeTissueSelfCollision_oneOfEachCollisionTypes(string $topTissue, string $bottomTissue, string $boneMesh,
+                                                          float $tissueYoungsModulus, int $tissueYoungsModulusExp,
+                                                          int $isSliding, int $contactStiffnessExp)
+{
+  // make a union of top tissue and bottom tissue, enable its self-collisions, and attach it to the bone
+
+  string $mergedTissue = "Merged" + $bottomTissue;
+  polyUnite -ch 1 -mergeUVSets 1 -name $mergedTissue $bottomTissue $topTissue;
+  select -r $mergedTissue;
+  string $tissueNodes[] = `ziva -t`;
+
+  setAttr ($tissueNodes[3] + ".youngsModulus") $tissueYoungsModulus; // set the Young's modulus stiffness to the zMaterial node
+  setAttr ($tissueNodes[3] + ".youngsModulusExp") $tissueYoungsModulusExp; // set the Young's modulus stiffness exponent to the zMaterial node
+  setAttr ($tissueNodes[2] + ".tetSize") 2.0; // adjust the size of the mesh tetrahedra to the zTet node
+  int $enableVolume = 1; // enable collision volume
+  int $enableSelfCollisions = 1; // enable self-collisions
+  ziva_setTissueCollisionAttrs_oneOfEachCollisionTypes($tissueNodes[1], $enableVolume, $enableSelfCollisions, $isSliding, $contactStiffnessExp);
+
+  // attach it to the bone
+  select -r ($mergedTissue + ".vtx[0:241]") $boneMesh; // attach it to the bone, using vertices [0:241]
+  string $attachment[] = `ziva -a`; // attach the bottom tissue to the bone
+  setAttr ($attachment[0] + ".damping") 0.1;
+}
+
+proc ziva_createStack_oneOfEachCollisionTypes(float $zOffset, float $tissueYoungsModulus, int $tissueYoungsModulusExp,
+                                              int $isSliding, int $contactStiffnessExp)
+{
+  // create five different collision cases (described below)
+
+  float $dx = 6.0;
+  float $xOffset = $dx;
+
+  // 1. tissue colliding with a bone; enable tissue collision volume only
+  string $meshes0[];
+  ziva_makeGeometry_oneOfEachCollisionTypes($meshes0, $xOffset, $zOffset);
+  int $enableTissueCollisions = 1;
+  int $enableBoneCollisions = 0;
+  ziva_makeTissueBone_oneOfEachCollisionTypes($meshes0[1], $meshes0[0], $tissueYoungsModulus, $tissueYoungsModulusExp,
+                                              $enableTissueCollisions, $enableBoneCollisions, $isSliding, $contactStiffnessExp);
+  $xOffset += $dx;
+
+  // 2. tissue colliding with a bone; enable bone collision volume only
+  string $meshes1[];
+  ziva_makeGeometry_oneOfEachCollisionTypes($meshes1, $xOffset, $zOffset);
+  $enableTissueCollisions = 0;
+  $enableBoneCollisions = 1;
+  ziva_makeTissueBone_oneOfEachCollisionTypes($meshes1[1], $meshes1[0], $tissueYoungsModulus, $tissueYoungsModulusExp,
+                                              $enableTissueCollisions, $enableBoneCollisions, $isSliding, $contactStiffnessExp);
+  $xOffset += $dx;
+
+  // 3. tissue colliding with a bone; enable tissue and bone collision volume
+  string $meshes1b[];
+  ziva_makeGeometry_oneOfEachCollisionTypes($meshes1b, $xOffset, $zOffset);
+  $enableTissueCollisions = 1;
+  $enableBoneCollisions = 1;
+  ziva_makeTissueBone_oneOfEachCollisionTypes($meshes1b[1], $meshes1b[0], $tissueYoungsModulus, $tissueYoungsModulusExp,
+                                              $enableTissueCollisions, $enableBoneCollisions, $isSliding, $contactStiffnessExp);
+  $xOffset += $dx;
+
+  // 4. tissue colliding with a tissue: collision volume enabled, self-collision disabled
+  // fix the bottom tissue to a bone with an attachment, so that it doesn't fall under gravity
+  string $meshes2[];
+  ziva_makeGeometry_oneOfEachCollisionTypes($meshes2, $xOffset, $zOffset);
+  ziva_makeTissueTissue_oneOfEachCollisionTypes($meshes2[1], $meshes2[0], $meshes1[0], $tissueYoungsModulus, $tissueYoungsModulusExp,
+                                                $isSliding, $contactStiffnessExp);
+  $xOffset += $dx;
+
+  // 5. tissue self-colliding with itself
+  // fix its bottom part to a bone with an attachment, so that it doesn't fall under gravity
+  string $meshes3[];
+  ziva_makeGeometry_oneOfEachCollisionTypes($meshes3, $xOffset, $zOffset);
+  ziva_makeTissueSelfCollision_oneOfEachCollisionTypes($meshes3[1], $meshes3[0], $meshes1[0], $tissueYoungsModulus, $tissueYoungsModulusExp,
+                                                       $isSliding, $contactStiffnessExp);
+  $xOffset += $dx;
+}
+
+// the main function
+global proc ziva_main_oneOfEachCollisionTypes(int $newScene)
+{
+  if (($newScene == 1) && (`about -batch` != 1))
+  {
+    if (`file -q -anyModified`)
+    {
+      $response = `confirmDialog -title "Changes not saved"
+        -message "This example will create a new scene. There are unsaved changes in the current scene that will be lost. Proceed?"
+        -button "Yes"
+        -button "Cancel"
+        -defaultButton "Yes"
+        -cancelButton "Cancel"
+        -dismissString "Cancel"`;
+
+      if ( $response == "Cancel" )
+        return;
+    }
+
+    file -f -new;
+  }
+
+  // force to start at frame 1 as usual, otherwise in later 2023 Maya any sence starts at a negative frame by default,
+  // this is a workaround for the above issue, the long-term solution should come from Autodesk.
+  currentTime 1;
+
+  // make a solver node
+  ziva -s;
+
+  // change the solver scale for more interesting deformations
+  setAttr "zSolver1.scaleX" 1.0;
+  setAttr "zSolver1.scaleY" 1.0;
+  setAttr "zSolver1.scaleZ" 1.0;
+
+  // decrease the number of solver Newton iterations to 1
+  // this increases simulation speed; the sim is still stable
+  setAttr "zSolver1.maxNewtonIterations" 1;
+
+  // enable collision detection in the solver
+  setAttr "zSolver1Shape.collisionDetection" 1;
+
+  // change some visualization options
+  //setAttr "zSolver1Shape.showAttachments" 0;
+  //setAttr "zSolver1Shape.showTetMeshes" 0;
+
+  // decrease the gravity to -1.0
+  setAttr "zSolver1Shape.gravityY" -1.0;
+
+  // create four stacks, one for each collision type
+  float $dx = 0;
+  for ($isSliding = 0; $isSliding <= 1; $isSliding++)
+  {
+    
+    float $tissueYoungsModulus = 12.0;
+    int $tissueYoungsModulusExp = 4;
+    int $contactStiffnessExp = 6;
+    ziva_createStack_oneOfEachCollisionTypes($dx, $tissueYoungsModulus, $tissueYoungsModulusExp,
+                                               $isSliding, $contactStiffnessExp);
+    $dx = $dx + 6.0;
+    
+  }
+
+  // select the solver node
+  select -r `zQuery -t zSolverTransform`;
+
+  // set the camera view
+  setAttr "persp.translateX" 50.0;
+  setAttr "persp.translateY" 12.0;
+  setAttr "persp.translateZ" 42.0;
+  setAttr "persp.rotateX" -17.0;
+  setAttr "persp.rotateY" 44.0;
+  setAttr "persp.rotateZ" 0.0;
+  setAttr "persp.scaleX" 1.0;
+  setAttr "persp.scaleY" 1.0;
+  setAttr "persp.scaleZ" 1.0;
+  if (`about -batch` != 1)
+  {
+    viewFit -all;
+  }
+
+  playbackOptions -e -minTime 1; // adjust playback to start from frame 1
+  playbackOptions -e -maxTime 200; // adjust playback to give 200 frames
+  playbackOptions -e -playbackSpeed 0; // set the playback to every frame
+
+  print ("\nMakes a 2 x 5 array of collision tests.\n\n" +
+"The first dimension corresponds to the different contact types:\n" +
+"  1. fixed contact\n" +
+"  2. sliding contact\n" +
+"\nThe second dimension corresponds to:\n" +
+"  1. tissue colliding with a bone; enable tissue collision volume only\n" +
+"  2. tissue colliding with a bone; enable bone collision volume only\n" +
+"  3. tissue colliding with a bone; enable tissue and bone collision volume\n" +
+"  4. tissue colliding with a tissue; enable collision volume, disable self-collisions\n" +
+"  5. tissue self-colliding with itself\n\n");
+
+  printDemoScriptPath("ziva_main_oneOfEachCollisionTypes");
+  print "Scene created. Demonstrates each of the collision types. Press \"Play\" to simulate.\n";
+}

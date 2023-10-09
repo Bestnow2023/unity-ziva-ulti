@@ -1,0 +1,170 @@
+global string $zSelectSolverWindowName = "selectSolverForLoadedRig";
+
+// Closes the window to load a Ziva rig.
+global proc zLoadRigClose()
+{
+  global string $zSelectSolverWindowName;
+  if (`window -exists $zSelectSolverWindowName` == 1)
+  {
+    deleteUI $zSelectSolverWindowName;
+  }
+}
+
+// Loads a Ziva rig into the specified solver.
+global proc zLoadRigExecute()
+{
+  global string $zSelectSolverWindowName;
+  if (`window -exists $zSelectSolverWindowName` == 1)
+  {
+    string $multipleFilters = "zBuilder (*.zBuilder);;All Files (*.*)";
+    string $result[] = `fileDialog2 -fileFilter $multipleFilters -selectFileFilter "zBuilder"
+                                    -dialogStyle 2 -cap "Load Ziva rig from a file into a Ziva solver" -fm 1`;
+    if (size($result) == 1)
+    {
+      string $solver = `optionMenu -q -value zSelectSolverForLoadedRig`;
+      deleteUI $zSelectSolverWindowName;
+
+      if ($solver == "<New solver>")
+      {
+        string $solverParts[] = `ziva -s`;
+        $solver = $solverParts[1];
+      }
+
+      ziva -defaultSolver $solver;
+      string $pythonCommand = "import zBuilder.commands as vfx_cmds; vfx_cmds.load_rig('" + $result[0] + "', '" + $solver + "')";
+      python($pythonCommand);
+      select -cl;
+    }
+    else if (size($result) > 1)
+    {
+      error -n "Only one file can be selected to load the Ziva rig.";
+    }
+  }
+}
+
+// Brings up the options dialog box to load a Ziva rig.
+global proc zLoadRigOptions()
+{
+  string $solvers[] = `ls -type zSolverTransform`;
+
+  // Ask the user to either make a new solver, or select the solver to which to apply the loaded Ziva rig.
+
+  global string $zSelectSolverWindowName;
+  if (`window -exists $zSelectSolverWindowName` == 1)
+  {
+    deleteUI $zSelectSolverWindowName;
+  }
+
+  window -title "Select solver into which to load the Ziva rig"
+         -resizeToFitChildren true $zSelectSolverWindowName;
+
+  gridLayout -numberOfRowsColumns 1 2 -cellWidthHeight 180 20 layout;
+
+  text -label " Solver:" -align "left";
+  optionMenu zSelectSolverForLoadedRig;
+  menuItem -label "<New solver>";
+  for($solverIndex = 0; $solverIndex < size($solvers); $solverIndex++)
+  {
+    string $solverName = $solvers[$solverIndex];
+    menuItem -label $solverName;
+  }
+  optionMenu -e -select 1 zSelectSolverForLoadedRig; // make first option default
+  setParent layout;
+
+  button -label "Apply" -command "zLoadRigExecute()";
+  button -label "Close" -command "zLoadRigClose()";
+
+  showWindow $zSelectSolverWindowName;
+  window -e -resizeToFitChildren true $zSelectSolverWindowName;
+};
+
+// Brings up the options dialog box to save a Ziva rig.
+global proc zSaveRigOptions()
+{
+   string $multipleFilters = "zBuilder (*.zBuilder);;All Files (*.*)";
+   string $result[] = `fileDialog2 -fileFilter $multipleFilters -selectFileFilter "zBuilder" -dialogStyle 2 -cap "Save Ziva rig to a file" -fm 0`;
+   if (size($result) == 1)
+   {
+      python("import zBuilder.commands as vfx_cmds; vfx_cmds.save_rig('" + $result[0] + "')");
+   }
+   else if (size($result) > 1)
+   {
+      error -n "Only one file can be selected to save the Ziva rig.";
+   }
+};
+
+// Closes the window to clone a Ziva rig using regular expressions.
+global proc zMirrorClose()
+{
+  global string $zMirrorWindowName;
+  if (`window -exists $zMirrorWindowName` == 1)
+  {
+    deleteUI $zMirrorWindowName;
+  }
+}
+
+// Clones a Ziva rig using regular expressions, based on parameters in zClone{Source,Target}RegularExpression
+global proc zMirrorApply()
+{
+  global string $zMirrorWindowName;
+  global string $zivaTransfer_sourcePrefix;
+  global string $zivaTransfer_targetPrefix;
+  global string $zivaTransfer_centerPrefix;
+  global string $zivaTransfer_mirrorAxis;
+
+  if (`window -exists $zMirrorWindowName` == 1)
+  {
+    $zivaTransfer_sourcePrefix = `textField -q -text zMirrorSourcePrefix`;
+    $zivaTransfer_targetPrefix = `textField -q -text zMirrorTargetPrefix`;
+    $zivaTransfer_centerPrefix = `textField -q -text zMirrorCenterPrefix`;
+    $zivaTransfer_mirrorAxis = `textField -q -text zMirrorMirrorAxis`;
+    deleteUI $zMirrorWindowName;
+    python("import zBuilder.commands as vfx_cmds; vfx_cmds.mirror(source_prefix='" + $zivaTransfer_sourcePrefix + "', target_prefix='" + $zivaTransfer_targetPrefix + "', center_prefix='" + $zivaTransfer_centerPrefix + "', mirror_axis='" + $zivaTransfer_mirrorAxis + "')");
+  }
+}
+
+// Brings up the options dialog box to clone a Ziva rig using regular expressions.
+global proc zMirrorOptions()
+{
+  global string $zMirrorWindowName;
+  global string $zivaTransfer_sourcePrefix;
+  global string $zivaTransfer_targetPrefix;
+  global string $zivaTransfer_centerPrefix;
+  global string $zivaTransfer_mirrorAxis;
+
+  if (`window -exists $zMirrorWindowName` == 1)
+  {
+    deleteUI $zMirrorWindowName;
+  }
+
+  window -title "Mirror Ziva Rig..."
+         -resizeToFitChildren true $zMirrorWindowName;
+
+  columnLayout -adjustableColumn true;
+
+  gridLayout -numberOfRowsColumns 2 2 -cellWidthHeight 180 20 layout;
+
+  text -label " Source Prefix:" -align "left";
+  textField -text $zivaTransfer_sourcePrefix zMirrorSourcePrefix;
+  text -label " Target Prefix:" -align "left";
+  textField -text $zivaTransfer_targetPrefix zMirrorTargetPrefix;
+  text -label " Center Prefix:" -align "left";
+  textField -text $zivaTransfer_centerPrefix zMirrorCenterPrefix;
+  text -label " Mirror Axis:" -align "left";
+  textField -text $zivaTransfer_mirrorAxis zMirrorMirrorAxis;
+
+  setParent ..;
+  gridLayout -numberOfRowsColumns 1 3 -cellWidthHeight 120 20;
+
+  string $applyCommand = "zMirrorApply()";
+  string $setDefaultCommand = "zWindowClose(\"" +
+                              $zMirrorWindowName +
+                              "\"); zSetCloneRigDefaults(); zMirrorOptions();";
+  string $closeCommand = "zMirrorClose()";
+  button -label "Apply" -command $applyCommand;
+  button -label "Reset Settings" -command $setDefaultCommand;
+  button -label "Close" -command $closeCommand;
+
+  showWindow $zMirrorWindowName;
+  window -e -resizeToFitChildren true $zMirrorWindowName;
+};

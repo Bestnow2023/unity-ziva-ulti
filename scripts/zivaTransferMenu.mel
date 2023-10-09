@@ -1,0 +1,36 @@
+// ----------------------------------------------------------------------------
+// Helper functions for ziva transfer menu
+source "zivaTransferMenuHelper";
+source "zivaTransferMenuLoadSave";
+
+// ----------------------------------------------------------------------------
+// ziva transfer menu definition
+global string $gMainWindow;
+setParent $gMainWindow;
+menu -label "Ziva Transfer" -tearOff true zivaTransferMenu;
+setParent -menu zivaTransferMenu;
+
+menuItem -label "Internal Anatomy" -divider true;
+menuItem -label "Harmonic Warp (Meshes, NURBS, Joints or Locators)" -ec true -ecr true -c "zHarmonicWarp" -ann "Select source mesh, target mesh, and one or more meshes/NURBS surfaces or curves/joints/locators to warp. This is a general-purpose harmonic warp for internal anatomy, e.g., for tissues, fascias, Maya joints, locators.";
+menuItem -ob yes -ann "options" -c "zInternalWarpOptions(0)";
+menuItem -label "Bone Warp" -ec true -ecr true -c "zBoneWarp" -ann "Select source mesh, target mesh, and one or more bone meshes to warp. Bone warp keeps the bones straight, based on a painted landmark map.";
+menuItem -ob yes -ann "options" -c "zInternalWarpOptions(1)";
+
+menuItem -label "External Geometry" -divider true;
+menuItem -label "RBF Warp (Meshes, NURBS)" -ec true -ecr true -c "zRBFWarp" -ann "Select source mesh, target mesh, and one or more meshes/NURBS surfaces or curves to warp. The RBF warp is useful, for example, for geometry located outside of the creature (eyelashes, hair, etc.).";
+menuItem -ob yes -ann "options" -c "zRBFWarpOptions";
+
+menuItem -label "Ziva Rig" -divider true;
+menuItem -label "Load Ziva Rig..." -ec true -ecr true -c "zLoadRigOptions()" -sourceType "mel" -ann "Load a Ziva rig from a file, into a new solver, or a specified existing solver. Geometry must already be present in the scene.";
+menuItem -label "Save Ziva Rig..." -ec true -ecr true -c "zSaveRigOptions()" -sourceType "mel" -ann "Save a Ziva rig for the selected solver to a file. If multiple solvers are selected, only the first solver is saved.";
+menuItem -divider true -longDivider false;
+menuItem -label "Cut Selection" -ec true -ecr true -c "import zBuilder.commands as vfx_cmds; vfx_cmds.rig_cut()" -sourceType "python" -ann "Cut the Ziva components from selected objects to the Ziva clipboard. Selected objects must come from exactly one solver. Selected objects may contain a solver node.";
+menuItem -label "Copy Selection" -ec true -ecr true -c "import zBuilder.commands as vfx_cmds; vfx_cmds.rig_copy()" -sourceType "python" -ann "Copy the Ziva components from selected objects to the Ziva clipboard. Selected objects must come from exactly one solver. Selected objects may contain a solver node.";
+menuItem -label "Paste Selection" -ec true -ecr true -c "import zBuilder.commands as vfx_cmds; vfx_cmds.rig_paste()" -sourceType "python" -ann "Paste the Ziva components from the Ziva clipboard onto scene geometry, into the solver stored in the Ziva clipboard. If such a solver does not exist in the scene, it is created.";
+menuItem -divider true -longDivider false;
+menuItem -label "Mirror Ziva Rig..." -ec true -ecr true -c "zMirrorOptions()" -sourceType "mel" -ann "Mirrors a Ziva VFX rig. Select the objects whose Ziva rig is to be mirror or alternatively select the solver to mirror whole rig.";
+menuItem -label "Update Ziva Rig" -ec true -ecr true -c "import zBuilder.commands as vfx_cmds; vfx_cmds.rig_update()" -sourceType "python" -ann "Update Ziva rig in the selected solver to use the current geometry. Useful if you modified geometry after converting it to Ziva bodies. This updates the solver to use the new geometry.";
+menuItem -label "Transfer Ziva Rig..." -ec true -ecr true -c "zRigTransferOptions()" -sourceType "mel" -ann "Transfer Ziva rig from one solver into another. Two copies of geometries must exist in the scene; the target copies must be prefixed with a specified prefix.";
+
+menuItem -label "Skin Cluster" -divider true;
+menuItem -label "Transfer..." -ec true -ecr true -c "zSkinClusterTransferOptions()" -sourceType "mel" -ann "Transfer a Maya skin cluster from a mesh onto the warped mesh. Select the Maya mesh that contains a skin cluster that you want to warp.";

@@ -1,0 +1,166 @@
+#!/usr/bin/env groovy
+
+pipeline {
+    agent none
+    options {
+        skipDefaultCheckout true
+        timestamps()
+        timeout(time: 2, unit: 'HOURS') // long in case it needs to wait for machines
+    }
+
+    stages {
+        stage('get sources') {
+            agent { label 'git && linux' }  // must checkout to a linux machine to avoid line ending issue
+            steps {
+                echo 'running checkout ziva-vfx-utils stage'
+
+                dir('ziva-vfx-utils') {
+                    script {
+                        scmVars = checkout scm
+                    }
+                }
+                stash(name: 'main', includes: 'ziva-vfx-utils/**')
+            }
+            post {
+                success {
+                    script {
+                        // TODO: notify repo PR build is in progress
+                        print("Build started")
+                    }
+                }
+                cleanup { cleanWs() }
+            }
+        }
+
+        stage("Parallel Run Test") {
+            matrix {
+                axes {
+                    axis {
+                        name 'platform'
+                        values 'windows', 'centos7'
+                    }
+                    axis {
+                        name 'mayaVersion'
+                        values '2019', '2020', '2022', '2023'
+                    }
+                    axis {
+                        name 'pythonVersion'
+                        values 'py', 'py2'
+                    }
+                }
+                excludes {  // 'py2' parameter is only for Maya 2022
+                    exclude {
+                        axis {
+                            name 'platform'
+                            values 'windows', 'centos7'
+                        }
+                        axis {
+                            name 'mayaVersion'
+                            values '2019', '2020', '2023'
+                        }
+                        axis {
+                            name 'pythonVersion'
+                            values 'py2'
+                        }
+                    }
+                }
+                stages {
+                    stage("Run tests") {
+                        agent { label "${platform} && nogpu" }
+                        environment {
+                            mayaVersion = "${mayaVersion}"
+                        }
+                        steps {
+                            echo "======== Platform - ${platform}, Maya ${mayaVersion}, ${pythonVersion} ========"
+
+                            timeout(time: 15, unit: 'MINUTES') {
+                                unstash 'main'
+                                script {
+                                    if ("${platform}" == 'windows') {
+                                        if ("${mayaVersion}" == '2022' && "${pythonVersion}" == 'py2') {
+                                            runWindowsTestStage(true)
+                                        } else {
+                                            runWindowsTestStage(false)
+                                        }
+                                    }
+                                    else {
+                                        if ("${mayaVersion}" == '2022' && "${pythonVersion}" == 'py2') {
+                                            runLinuxTestStage(true)
+                                        } else {
+                                            runLinuxTestStage(false)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        post { cleanup { cleanWs() } }
+                    }
+                }
+            }
+        }
+
+        stage('doc generation') {
+            agent { label 'centos7 && nogpu' }
+            steps {
+                timeout(time: 15, unit: 'MINUTES') {
+                    unstash 'main'
+                    sh "ziva-vfx-utils/docs/build_the_docs.sh"
+                }
+            }
+            post { cleanup { cleanWs() } }
+        }
+    }
+
+    post{
+        unsuccessful {
+            node ('git && linux') {
+                script {
+                    // TODO: notify repo PR build failed
+                    print("Build failed")
+                }
+            }
+        }
+        success {
+            node ('git && linux') {
+                script {
+                    // TODO: notify repo PR build finish successfully
+                    print("Build success")
+                }
+            }
+        }
+    }
+}
+
+def runWindowsTestStage(runInPython2Env) {
+    withEnv([
+        'zivadyn_LICENSE=5053@license.zivacloud.com',
+        'unitytech_LICENSE=5053@license.zivacloud.com',        
+    ]) {
+        dir('ziva-vfx-utils') {
+            bat "python tests/CmtTests/copy_plugin_zBuilder_tests.py --maya ${mayaVersion}"
+            if (runInPython2Env) {
+                bat "python tests/CmtTests/run_zbuilder_tests.py --maya ${mayaVersion} --py2"
+            }
+            else {
+                bat "python tests/CmtTests/run_zbuilder_tests.py --maya ${mayaVersion}"
+            }
+            
+        }
+    }
+}
+
+def runLinuxTestStage(runInPython2Env) {
+    withEnv([
+        'zivadyn_LICENSE=5053@license.zivacloud.com',
+        'unitytech_LICENSE=5053@license.zivacloud.com',        
+    ]) {
+        dir('ziva-vfx-utils') {
+            sh "python tests/CmtTests/copy_plugin_zBuilder_tests.py --maya ${mayaVersion}"
+            if (runInPython2Env) {
+                sh "python tests/CmtTests/run_zbuilder_tests.py --maya ${mayaVersion} --py2"
+            } else {
+                sh "python tests/CmtTests/run_zbuilder_tests.py --maya ${mayaVersion}"
+            }
+        }
+    }
+}

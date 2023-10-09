@@ -1,0 +1,33 @@
+global proc AEzClothTemplate( string $nodeName )
+{
+  editorTemplate -beginScrollLayout;
+
+  // Add our controls
+  editorTemplate -addControl "enable";
+  editorTemplate -addControl "collisions";
+  editorTemplate -addControl "selfCollisions";
+  editorTemplate -addControl "contactSliding";
+  editorTemplate -addControl "collisionSets";
+  editorTemplate -addControl "contactStiffness";
+  editorTemplate -addControl "contactStiffnessExp";
+  editorTemplate -addControl "material";
+  editorTemplate -addControl "inertialDamping";
+  editorTemplate -addControl "bendRestAngle";
+  editorTemplate -addControl "restScaleEnvelope";
+  editorTemplate -addControl "pressureEnvelope";
+  editorTemplate -addControl "surfaceTensionEnvelope";
+
+  // suppress attributes
+  editorTemplate -suppress "caching";
+  editorTemplate -suppress "nodeState";
+  editorTemplate -suppress "frozen";
+
+  editorTemplate -suppress "collisionMesh";
+  editorTemplate -suppress "collisionShape";
+  editorTemplate -suppress "iGeo";
+  editorTemplate -suppress "oGeo";
+  editorTemplate -suppress "fields";
+
+  editorTemplate -addExtraControls;
+  editorTemplate -endScrollLayout;
+}
